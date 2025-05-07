@@ -5,13 +5,13 @@ import openai
 
 class AIDiagnosticClassifier:
     """Service for classifying network diagnostics using AI."""
-    
+
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
         openai.api_key = self.api_key
-        
+
         # Initialize diagnostic categories with their validation prompts
         self.diagnostic_rules = {
             1: {
@@ -138,11 +138,12 @@ class AIDiagnosticClassifier:
                 """
             },
         }
-    
+
     async def _validate_diagnostic_prompt(self, category_id: int, diagnostic_input: Dict[str, Any]) -> bool:
         """Validate if the diagnostic input matches the category's validation prompt."""
         steps = diagnostic_input.get("steps", [])
-        formatted_steps = [f"Step: {step['step']}\nResult: {step['result']}" for step in steps]
+        formatted_steps = [
+            f"Step: {step['step']}\nResult: {step['result']}" for step in steps]
         steps_text = "\n\n".join(formatted_steps)
         validation_prompt = f"""You are a network diagnostic validator. Given these diagnostic steps and results:
 {steps_text}
@@ -156,7 +157,8 @@ Respond with 'true' if it matches, 'false' if it doesn't. Only respond with true
             response = await openai.ChatCompletion.acreate(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a network diagnostic validation assistant."},
+                    {"role": "system",
+                        "content": "You are a network diagnostic validation assistant."},
                     {"role": "user", "content": validation_prompt}
                 ],
                 temperature=0
@@ -170,7 +172,8 @@ Respond with 'true' if it matches, 'false' if it doesn't. Only respond with true
         """Analyze diagnostic input and determine the most appropriate category.
         First selects potential categories, then validates them until finding a match."""
         steps = diagnostic_input.get("steps", [])
-        formatted_steps = [f"Step: {step['step']}\nResult: {step['result']}" for step in steps]
+        formatted_steps = [
+            f"Step: {step['step']}\nResult: {step['result']}" for step in steps]
         steps_text = "\n\n".join(formatted_steps)
 
         # First, get potential categories
@@ -192,30 +195,75 @@ Respond with 'true' if it matches, 'false' if it doesn't. Only respond with true
             response = await openai.ChatCompletion.acreate(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a network diagnostic classification assistant."},
+                    {"role": "system",
+                        "content": "You are a network diagnostic classification assistant."},
                     {"role": "user", "content": selection_prompt}
                 ],
                 temperature=0
             )
-            
+
             # Parse the comma-separated category IDs
-            potential_categories = [int(id.strip()) for id in response.choices[0].message.content.split(',')]
+            potential_categories = [
+                int(id.strip()) for id in response.choices[0].message.content.split(',')]
             print(f"Potential categories identified: {potential_categories}")
-            
+
             # Try each suggested category in order
             for category_id in potential_categories:
                 if category_id not in self.diagnostic_rules:
                     continue
-                    
-                print(f"Validating category {category_id}: {self.diagnostic_rules[category_id]['name']}")
+
+                print(
+                    f"Validating category {category_id}: {self.diagnostic_rules[category_id]['name']}")
                 if await self._validate_diagnostic_prompt(category_id, diagnostic_input):
                     print(f"Found matching category: {category_id}")
                     return category_id
-                    
+
             # If no categories match or an error occurs, return Undetermined (8)
             print("No matching categories found, defaulting to Undetermined")
             return 8
-            
+
+        except Exception as e:
+            print(f"Error in classification process: {str(e)}")
+            return 8
+
+    async def classify_single_step(self, description: str) -> int:
+        """Analyze a single description and determine the most appropriate category."""
+        # Get potential categories
+        categories_str = "\n".join(
+            f"{id}: {rule['name']}\nDescription: {rule['description']}"
+            for id, rule in self.diagnostic_rules.items()
+        )
+
+        selection_prompt = f"""You are a network diagnostic classifier. Given this description:
+        {description}
+
+        Select the most likely diagnostic category from this list:
+        {categories_str}
+
+        Respond with only the category ID (e.g., '1')."""
+
+        try:
+            response = await openai.ChatCompletion.acreate(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system",
+                        "content": "You are a network diagnostic classification assistant."},
+                    {"role": "user", "content": selection_prompt}
+                ],
+                temperature=0
+            )
+
+            # Get the category ID
+            category_id = int(response.choices[0].message.content.strip())
+
+            if category_id not in self.diagnostic_rules:
+                print(f"Invalid category ID returned: {category_id}")
+                return 8
+
+            print(
+                f"Selected category {category_id}: {self.diagnostic_rules[category_id]['name']}")
+            return category_id
+
         except Exception as e:
             print(f"Error in classification process: {str(e)}")
             return 8

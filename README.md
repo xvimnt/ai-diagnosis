@@ -1,6 +1,87 @@
-# Network Diagnostic System
+# AI Network Diagnostic API
 
-A Python-based diagnostic system for network services that follows SOLID principles and implements Test-Driven Development (TDD).
+An API for classifying network diagnostics using AI.
+
+## Setup
+
+1. Clone the repository
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   .\venv\Scripts\activate  # Windows
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Set up your OpenAI API key in an environment variable:
+   ```bash
+   set OPENAI_API_KEY=your-api-key
+   ```
+
+## Running the API
+
+```bash
+python -m uvicorn src.main:app --reload
+```
+
+The API will be available at http://127.0.0.1:8000
+
+## API Documentation
+
+Once the server is running, visit:
+- Swagger UI: http://127.0.0.1:8000/docs
+- ReDoc: http://127.0.0.1:8000/redoc
+
+### Endpoints
+
+#### 1. Multi-step Diagnostic
+
+`POST /api/v1/diagnose`
+
+Analyze multiple diagnostic steps and their results to classify the issue.
+
+**Example Request:**
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/diagnose \
+  -H "Content-Type: application/json" \
+  -d '{
+    "steps": [
+      {
+        "step": "Check interface status",
+        "result": "Interface GigabitEthernet1/0/1 is down"
+      },
+      {
+        "step": "Verify UNI equipment",
+        "result": "UNI device XYZ123 is unreachable"
+      }
+    ]
+  }'
+```
+
+#### 2. Single-step Diagnostic
+
+`POST /api/v1/diagnose/single`
+
+Analyze a single description to classify the issue.
+
+**Example Request:**
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/diagnose/single \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "The interface GigabitEthernet1/0/1 is down and the UNI device XYZ123 is unreachable"
+  }'
+```
+
+### Example Response (for both endpoints)
+
+```json
+{
+  "category_id": 1,
+  "category_name": "Puerto LAN",
+  "category_description": "Determina si existe una falla real que pueda ser atribuida a la caída de un equipo UNI..."
+}
 
 ## Features
 
@@ -23,60 +104,6 @@ ai-diagnosis/
 ├── tests/                # Test files
 └── requirements.txt      # Project dependencies
 ```
-
-## Installation
-
-1. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-## Running Tests
-
-There are several ways to run the tests:
-
-1. Using pytest directly:
-```bash
-python -m pytest
-```
-
-2. Using the provided batch script:
-```bash
-run_tests.bat
-```
-
-3. Using specific test files or test cases:
-```bash
-python -m pytest tests/test_diagnostic_process.py -k test_initialize_diagnostic_process -v
-```
-
-The project uses pytest.ini configuration that:
-- Sets strict asyncio mode for async/await testing
-- Sets the fixture loop scope to function level
-- Shows verbose output
-- Shows locals on test failures
-- Automatically finds and runs all test files in the tests directory
-
-## Design Patterns Used
-
-- **Strategy Pattern**: For different diagnostic strategies based on device vendors
-- **Observer Pattern**: For notification system
-- **Repository Pattern**: For data access abstraction
-- **Factory Pattern**: For creating diagnostic processes
-
-## SOLID Principles Implementation
-
-1. **Single Responsibility Principle**: Each class has a single responsibility (e.g., DiagnosticProcess, DeviceService)
-2. **Open/Closed Principle**: New diagnostic strategies can be added without modifying existing code
-3. **Liskov Substitution Principle**: Different service implementations can be substituted without affecting the system
-4. **Interface Segregation**: Clients are not forced to depend on interfaces they don't use
-5. **Dependency Inversion**: High-level modules depend on abstractions
 
 ## License
 
