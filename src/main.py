@@ -1,7 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from typing import List
 from pydantic import BaseModel
+from dotenv import load_dotenv
 from src.infrastructure.ai_diagnostic_classifier import AIDiagnosticClassifier
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = FastAPI(
     title="AI Network Diagnostic API",
